@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from rest_framework.pagination import PaginationSerializer
+from rest_framework.pagination import PageNumberPagination
 from yak.rest_social_network.models import Tag, Comment, Follow, Flag, Share, Like
 from yak.rest_user.serializers import UserSerializer
 
@@ -70,7 +70,7 @@ class LikeSerializer(serializers.ModelSerializer):
         model = Like
 
 
-class PaginatedFollowSerializer(PaginationSerializer):
+class PaginatedFollowSerializer(PageNumberPagination):
     class Meta:
         object_serializer_class = FollowSerializer
 
@@ -82,7 +82,7 @@ class FlagSerializer(serializers.ModelSerializer):
         model = Flag
 
 
-class FollowPaginationSerializer(PaginationSerializer):
+class FollowPaginationSerializer(PageNumberPagination):
     def __init__(self, *args, **kwargs):
         """
         Overrode BasePaginationSerializer init to set object serializer as Follow Serializer.
