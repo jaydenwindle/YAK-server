@@ -184,7 +184,7 @@ class SchemaTestCase(APITestCaseWithAssertions):
                     # Else grab the first one in the list
                     if len(new_data_object) == 0:
                         continue
-                    new_data_object = new_data_object[0]
+                    new_data_object = new_data_object.get(0, new_data_object)
 
                 self.check_schema_keys(new_data_object, self.schema_objects[new_schema_object])
 
