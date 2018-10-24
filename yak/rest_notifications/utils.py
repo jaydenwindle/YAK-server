@@ -4,6 +4,7 @@ import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils.html import strip_tags
+from django.utils.module_loading import import_string
 from pypushwoosh import constants
 from pypushwoosh.client import PushwooshClient
 
@@ -16,7 +17,7 @@ def submit_to_pushwoosh(request_data):
     return response.json()
 
 
-def send_push_notification(receiver, message, deep_link=None):
+def send_pushwoosh_notification(receiver, message, deep_link=None):
     notification_data = {
         'content': message,
         'send_date': constants.SEND_DATE_NOW,
@@ -38,6 +39,9 @@ def send_push_notification(receiver, message, deep_link=None):
 
     return submit_to_pushwoosh(request_data)
 
+def send_push_notification(receiver, message, deep_link=None):
+    notification_handler = import_string(yak_settings.PUSH_NOTIFICATION_HANDLER)
+    return notification_handler(receiver, message, deep_link=None)
 
 def send_email_notification(receiver, message, reply_to=None):
     headers = {}
