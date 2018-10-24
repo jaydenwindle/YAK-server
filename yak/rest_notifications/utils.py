@@ -39,9 +39,11 @@ def send_pushwoosh_notification(receiver, message, deep_link=None):
 
     return submit_to_pushwoosh(request_data)
 
+
 def send_push_notification(receiver, message, deep_link=None):
     notification_handler = import_string(yak_settings.PUSH_NOTIFICATION_HANDLER)
     return notification_handler(receiver, message, deep_link=None)
+
 
 def send_email_notification(receiver, message, reply_to=None):
     headers = {}
