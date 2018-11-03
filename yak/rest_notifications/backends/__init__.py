@@ -1,0 +1,1 @@
+from .pushwoosh import PushwooshNotificationBackend

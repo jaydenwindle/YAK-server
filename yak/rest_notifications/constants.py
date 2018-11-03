@@ -1,0 +1,2 @@
+PLATFORM_IOS = 'ios'
+PLATFORM_ANDROID = 'android'
