@@ -9,6 +9,8 @@ from yak.rest_notifications.models import NotificationSetting, Notification, cre
     PushwooshToken, NotificationType
 from yak.rest_notifications.serializers import NotificationSettingSerializer, NotificationSerializer, \
     PushwooshTokenSerializer
+from yak.rest_notifications.utils import register_device
+from yak.rest_notifications.exceptions import DeviceRegistrationException
 from yak.rest_social_network.views import CommentViewSet, FollowViewSet, ShareViewSet, LikeViewSet
 from yak.settings import yak_settings
 
@@ -19,20 +21,14 @@ class PushwooshTokenView(generics.CreateAPIView):
     permission_classes = (IsOwner,)
 
     def perform_create(self, serializer):
+        token = serializer.validated_data['token']
         hwid = serializer.validated_data.pop("hwid")
         language = serializer.validated_data.pop("language")
         platform = serializer.validated_data.pop("platform")
 
-        platform_code = constants.PLATFORM_IOS
-        if platform == 'android':
-            platform_code = constants.PLATFORM_ANDROID
-
-        push_client = client.PushwooshClient()
-        command = RegisterDeviceCommand(yak_settings.PUSHWOOSH_APP_CODE, hwid, platform_code,
-                                        serializer.validated_data["token"], language)
-        response = push_client.invoke(command)
-
-        if response["status_code"] != 200:
+        try:
+            register_device(token, hwid, language, platform)
+        except DeviceRegistrationException:
             raise AuthenticationFailed("Authentication with notification service failed")
 
         serializer.save(user=self.request.user)
