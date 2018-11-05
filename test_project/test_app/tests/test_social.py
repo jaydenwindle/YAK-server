@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -15,6 +16,10 @@ class BaseAPITests(SchemaTestCase):
     def setUp(self):
         super(BaseAPITests, self).setUp()
         self.dev_user = UserFactory()
+        patcher = patch('yak.rest_notifications.backends.pushwoosh.submit_to_pushwoosh')
+        self.addCleanup(patcher.stop)
+        self.mock_submit_to_pushwoosh = patcher.start()
+        self.mock_submit_to_pushwoosh.return_value = {"status_code": 200}
 
 
 class FlagTestCase(BaseAPITests):

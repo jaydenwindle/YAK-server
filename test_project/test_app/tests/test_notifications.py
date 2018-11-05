@@ -7,9 +7,11 @@ from rest_framework.reverse import reverse
 from test_project import settings
 from test_project.test_app.models import Post, Article
 from test_project.test_app.tests.factories import PostFactory, UserFactory
+from pypushwoosh import constants
 from yak.rest_core.test import SchemaTestCase
 from yak.rest_notifications.models import create_notification, Notification, NotificationSetting, NotificationType
-from yak.rest_notifications.utils import send_email_notification, send_push_notification
+from yak.rest_notifications.utils import send_email_notification, send_push_notification, register_device
+from yak.rest_notifications.exceptions import DeviceRegistrationException, NotificationDeliveryException
 from yak.settings import yak_settings
 
 
@@ -18,8 +20,8 @@ User = get_user_model()
 
 class MockPushNotificationBackend(object):
     @classmethod
-    def send_push_notification(user, message, **kwargs):
-        return { "hello": "world" }
+    def send_push_notification(cls, user, message, deep_link=None, **kwargs):
+        return {"hello": "world"}
 
 
 class NotificationsTestCase(SchemaTestCase):
@@ -29,7 +31,7 @@ class NotificationsTestCase(SchemaTestCase):
         self.receiver = UserFactory()
         self.reporter = UserFactory()
         self.notification_type = NotificationType.objects.get(slug="comment")
-        patcher = patch('yak.rest_notifications.utils.submit_to_pushwoosh')
+        patcher = patch('yak.rest_notifications.backends.pushwoosh.submit_to_pushwoosh')
         self.addCleanup(patcher.stop)
         self.mock_submit_to_pushwoosh = patcher.start()
         self.mock_submit_to_pushwoosh.return_value = {"status_code": 200}
@@ -303,3 +305,44 @@ class NotificationSettingsTestCase(SchemaTestCase):
 
         self.assertSchemaPut(url, "$notificationSettingBulkRequest", "$notificationSettingResponse", data, user)
         self.assertFalse(NotificationSetting.objects.get(pk=notification_settings[0].pk).allow_email)
+
+
+class PushwooshNotificationBackendTestCase(SchemaTestCase):
+
+    @patch('yak.rest_notifications.backends.pushwoosh.client')
+    @patch('yak.rest_notifications.backends.pushwoosh.RegisterDeviceCommand')
+    def test_register_devices_success(self, mock_command, client):
+        client.PushwooshClient.return_value.invoke.return_value = {"status_code": 200}
+        response = register_device('token', 'hwid', 'android', 'en')
+
+        mock_command.assert_called_with(yak_settings.PUSHWOOSH_APP_CODE, 'hwid',
+                                        constants.PLATFORM_ANDROID, 'token', 'en')
+        self.assertEqual(response["status_code"], 200)
+
+    @patch('yak.rest_notifications.backends.pushwoosh.client')
+    @patch('yak.rest_notifications.backends.pushwoosh.RegisterDeviceCommand')
+    def test_register_devices_raises_exception_on_failure(self, mock_command, client):
+        client.PushwooshClient.return_value.invoke.return_value = {"status_code": 400}
+
+        with self.assertRaises(DeviceRegistrationException):
+            register_device('token', 'hwid', 'android', 'en')
+
+        mock_command.assert_called_with(yak_settings.PUSHWOOSH_APP_CODE, 'hwid',
+                                        constants.PLATFORM_ANDROID, 'token', 'en')
+
+    @patch('yak.rest_notifications.backends.pushwoosh.submit_to_pushwoosh')
+    def test_send_notification_sucess(self, mock_submit):
+        receiver = UserFactory()
+        mock_submit.return_value = {"status_code": 200}
+
+        response = send_push_notification(receiver, "hello world")
+
+        self.assertEqual(response["status_code"], 200)
+
+    @patch('yak.rest_notifications.backends.pushwoosh.submit_to_pushwoosh')
+    def test_send_notification_raises_exception_on_failure(self, mock_submit):
+        receiver = UserFactory()
+        mock_submit.return_value = {"status_code": 400}
+
+        with self.assertRaises(NotificationDeliveryException):
+            send_push_notification(receiver, "hello world")
