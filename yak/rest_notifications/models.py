@@ -117,7 +117,7 @@ class Notification(CoreModel):
 
 @task
 def create_notification(receiver, reporter, content_object, notification_type, template_override=None, reply_to=None,
-                        deep_link=None):
+                        deep_link=None, **kwargs):
     # If the receiver of this notification is the same as the reporter or
     # if the user has blocked this type, then don't create
     if receiver == reporter:
@@ -134,7 +134,7 @@ def create_notification(receiver, reporter, content_object, notification_type, t
     notification_setting = NotificationSetting.objects.get(notification_type=notification_type, user=receiver)
     if notification_setting.allow_push and yak_settings.ALLOW_PUSH:
         from .utils import send_push_notification
-        send_push_notification(receiver, notification.push_message(), deep_link=deep_link)
+        send_push_notification(receiver, notification.push_message(), deep_link=deep_link, **kwargs)
 
     if notification_setting.allow_email and yak_settings.ALLOW_EMAIL and receiver.email:
         from .utils import send_email_notification
